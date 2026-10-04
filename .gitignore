@@ -1,0 +1,23 @@
+node_modules/
+.env
+.env.*
+*.log
+
+# WhatsApp authentication/session
+auth/
+auth_info/
+session/
+sessions/
+.baileys/
+creds.json
+store.json
+
+# Local/runtime data
+data/
+tmp/
+cache/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
