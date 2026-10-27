@@ -748,7 +748,11 @@ class App:
             return self.out("[!] %s" % e)
         p = self.db.peer(uid)
         if p and p["ik"] == u["ik"]:
-            return self.out("Tidak ada perubahan kunci untuk %s." % self.pname(uid))
+            self.out("Kunci %s tidak berubah." % self.pname(uid))
+            if self.read("Reset sesi enkripsi saja (memperbaiki pesan yang tak bisa dibuka)? [y/N] ").strip().lower() == "y":
+                self.db.del_sessions(uid)
+                self.out("✓ Sesi direset. Pesan berikutnya memulai sesi baru.")
+            return
         self.out("Kunci baru. Safety number: %s" % secure.safety_number(self.cfg["ik_pub"], u["ik"]))
         if self.read("Terima kunci baru & reset sesi enkripsi? [y/N] ").strip().lower() == "y":
             self.db.peer_set(uid, ik=u["ik"], snick=safe(u["nickname"]), verified=0)
@@ -1001,7 +1005,11 @@ class App:
             except EOFError:
                 break
             except KeyboardInterrupt:
-                print("\n(ketik 'exit' untuk keluar)")
+                if self.chat:  # di dalam chat, "exit" akan terkirim sebagai pesan, jadi Ctrl+C = keluar chat
+                    print("\nKeluar dari chat.")
+                    self.chat = None
+                else:
+                    print("\n(ketik 'exit' untuk keluar)")
                 continue
             if line and not self.handle_line(line):
                 break

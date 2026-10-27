@@ -186,7 +186,11 @@ class Secure:
             raise ValueError("Pesan terlalu panjang")
         with self.lock:
             sessions = self.store.sessions(peer)
-            st = sessions[min(sessions)] if sessions else start_initiator(self.ik_priv, peer_ik)
+            if sessions:
+                st = max(sessions.values(), key=lambda x: (x.get("rx", 0), x["sid"]))  # sesi paling baru aktif
+            else:
+                st = start_initiator(self.ik_priv, peer_ik)
+                st["rx"] = 1
             wire = ratchet_encrypt(st, pt, ("%s>%s" % (self.me, peer)).encode())
             self.store.save_session(peer, st)  # simpan SEBELUM kirim: kunci pesan tidak boleh dipakai ulang
         return PREFIX + b64e(wire)
@@ -198,7 +202,8 @@ class Secure:
         sid, ek, *_ = parse_header(data)
         sid_s = b64e(sid)
         with self.lock:
-            st = self.store.sessions(peer).get(sid_s)
+            sessions = self.store.sessions(peer)
+            st = sessions.get(sid_s)
             if st is None:
                 if ek is None:
                     raise ValueError("sesi tidak dikenal")
@@ -206,6 +211,7 @@ class Secure:
                     raise ValueError("header tidak valid")
                 st = start_responder(self.ik_priv, self.ik_pub, peer_ik, b64e(ek))
             pt = ratchet_decrypt(st, data, ("%s>%s" % (peer, self.me)).encode())
+            st["rx"] = max([x.get("rx", 0) for x in sessions.values()], default=0) + 1
             self.store.save_session(peer, st)
         return json.loads(pt.decode("utf-8"))
 
